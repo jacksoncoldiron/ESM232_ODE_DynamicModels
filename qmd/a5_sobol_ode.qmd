@@ -1,0 +1,51 @@
+---
+title: "Sobol with an OBE"
+author: "Jackson Coldiron and Kaitlin Castor"
+editor: visual
+format: 
+  html:
+    code-fold: true
+    embed-resources: true
+    theme: sandstone
+    toc: false
+execute:
+  freeze: auto 
+  warning: false
+  message: false
+---
+
+## Introduction
+
+## Model Implementation
+```{r}
+# Load required libraries
+library(tidyverse)
+library(deSolve)
+library(sensitivity)
+library(here)
+```
+
+#### Model Run
+```{r}
+# Bring in the model
+source(here("R","forestgrowth.R"))
+
+# Set the parameters
+tm <- seq(from = 1, to = 300)
+Pinitial <- 1
+gps <- list(threshold = 50, K = 250, r = 0.01, g = 2)
+res <- ode(Pinitial, tm, forestgrowth, gps)
+colnames(res) <- c("time", "carbon")
+
+ggplot(as.data.frame(res), aes(time, carbon)) +
+  geom_point()
+```
+
+#### Results with No Uncertainty
+
+## Sensitivity Analysis
+#### Sobol
+
+#### Visualize Results
+
+## Discussion

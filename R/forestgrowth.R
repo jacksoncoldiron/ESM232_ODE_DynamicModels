@@ -6,24 +6,24 @@
 #' threshold canopy closure and one when it is above it. Forest size
 #' is measured in units of Carbon (C)
 #' @param time time since start
-#' @param parms as list with three values, r, C, g
+#' @param parms as list with three values, r, C, g, thres
 #' @param r early exponentional growth rate (kg C/year)
-#' @param C initial size of the Forest (kg C)
+#' @param y initial size of the Forest (kg C)
 #' @param g linear growth rate once canopy closure is reached (kg C/year)
 #' @param K carrying capacity (kg C)
-#' @param threshold canopy closure threshold (kg C)
+#' @param thres canopy closure threshold (kg C)
 #' @return dC derivative of the forest growth (kg C/year)
 #' @examples
  
 
-forest <- function(time, C, parms) {
+forest <- function(t, y, parms) {
   # Check if the forest is below the threshold canopy closure
-  if (C < threshold) {
+  if (y < parms$thres) {
     # Calculate growth using the exponential growth equation
-    dC <- parms$r * C
+    dC <- parms$r * y
   } else {
     # Calculate growth using the linear growth equation
-    dC <- parms$g * (1 - C / parms$K)
+    dC <- parms$g * (1 - y / parms$K)
   }
-  return(dC)
+  return(list(dC))
 }
