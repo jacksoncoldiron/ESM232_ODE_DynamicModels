@@ -115,18 +115,29 @@ allresults <- as.data.frame(sens_forest$X) |>
 #### Visualize Results
 
 ```{r}
-#extract results from pmap for a data frame
-allres <- allresults |> map_dfr(`[`, c("maxconc"))
-#allres <- allresults %>% map_dfr(`[`)
+# Convert vector of results to a data frame for plotting
+allres <- data.frame(max_C = unlist(allresults))
 
 
 
 #create a boxplot
-#tmp <- allres %>% pivot_longer(cols = everything(), names_to = "metric", values_to = "value")
-#ggplot(tmp, aes(metric, value, col = metric)) +
- # geom_boxplot()
+ggplot(allres, aes(y = max_C)) +
+  geom_boxplot(fill = "steelblue") +
+  labs(title = "Distribution of Maximum Carbon Stock (C)",
+       y = "Max Carbon (kgC)", x = "") +
+  theme_minimal()
+
 
 #compute the sobol indices for each metric
+```
+#### Sobol Indices
+```{r}
+# Assign Results to the sobol object
+sens_forest$y <- unlist(allresults)
+
+# Compute Sobol indices
+tell(sens_forest, sens_forest$y)
+
 ```
 
 ## Discussion
