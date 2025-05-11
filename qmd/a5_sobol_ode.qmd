@@ -17,6 +17,7 @@ execute:
 ## Introduction
 
 ## Model Implementation
+
 ```{r}
 # Load required libraries
 library(tidyverse)
@@ -26,6 +27,7 @@ library(here)
 ```
 
 #### Model Run
+
 ```{r}
 # Bring in the model
 source(here("R","forestgrowth.R"))
@@ -40,6 +42,7 @@ colnames(res) <- c("time", "carbon")
 ```
 
 #### Results with No Uncertainty
+
 ```{r}
 #| fig-width: 10
 #| fig-cap: "__Figure 1: Growth in Forest Size Over 300 Years with No Uncertainty __: Holding the parameters fixed with given values, forest growth in terms of kilograms of Carbon is shown over 300 years. Forest size grows exponetially until it reaches the canopy closure threshold at 50 kg C. Then growth follows a linear model based on a carrying capacity of 250 kg C."
@@ -55,6 +58,7 @@ no_uncert
 ```
 
 ## Sensitivity Analysis
+
 ```{r}
 # Set distributions for parameters
 # Assume parameters are normally distributed with a sd of 10% of mean value
@@ -80,6 +84,7 @@ X2 <- cbind.data.frame(r, g, K, thres)
 ```
 
 #### Sobol
+
 ```{r}
 # Create a sobol object and get sets of parameters for running the model
 sens_forest <- sobolSalt(model = NULL, X1, X2, nboot = 300)
@@ -92,26 +97,36 @@ metric <- function(res) {
 }
 
 # Use a wrapper function to return just the map
-p_wrapper <- function(r, g, K, thres, Pinitial, simtimes, func) {
+p_wrapper <- function(r, g, K, thres, Pinitial, simtimes, func, metric) {
   parms <- list(r = r, K = K, g = g, thres = thres)
   result <- ode(y = Pinitial, times = simtimes, func = func, parms = parms)
   result <- as.data.frame(result)
   colnames(result) <- c("time", "carbon")
   # get metrics
-  metrics <- metric(result)
+  metrics <- metric(as.data.frame(result))
   return(metrics$max)
 }
 
 # Run the model with the parameters
 allresults <- as.data.frame(sens_forest$X) |>
-  pmap(p_wrapper, Pinitial = Pinitial, simtimes = tm, func = forest)
+  pmap(p_wrapper, Pinitial = Pinitial, simtimes = tm, func = forest, metric = metric)
 ```
-
 
 #### Visualize Results
-```{r}
-# 
-```
 
+```{r}
+#extract results from pmap for a data frame
+allres <- allresults |> map_dfr(`[`, c("maxconc"))
+#allres <- allresults %>% map_dfr(`[`)
+
+
+
+#create a boxplot
+#tmp <- allres %>% pivot_longer(cols = everything(), names_to = "metric", values_to = "value")
+#ggplot(tmp, aes(metric, value, col = metric)) +
+ # geom_boxplot()
+
+#compute the sobol indices for each metric
+```
 
 ## Discussion

@@ -7,7 +7,7 @@
 #' is measured in units of Carbon (C)
 #' @param time time since start
 #' @param parms as list with three values, r, C, g, thres
-#' @param r early exponentional growth rate (kg C/year)
+#' @param r early exponential growth rate (kg C/year)
 #' @param y initial size of the Forest (kg C)
 #' @param g linear growth rate once canopy closure is reached (kg C/year)
 #' @param K carrying capacity (kg C)
