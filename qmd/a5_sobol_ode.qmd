@@ -1,5 +1,5 @@
 ---
-title: "Sobol with an OBE"
+title: "Sobol with an ODE"
 author: "Jackson Coldiron and Kaitlin Castor"
 editor: visual
 format: 
@@ -15,6 +15,7 @@ execute:
 ---
 
 ## Introduction
+Understanding how forests accumulate carbon over time is essential for evaluating their role in climate mitigation. In this exercise, we model forest carbon growth using a piecewise differential equation that shifts from exponential to logistic growth once a canopy closure threshold is reached. We then apply Sobol global sensitivity analysis to explore how uncertainty in model parameters—such as early growth rate, post-closure growth rate, and carrying capacity—affects estimates of maximum carbon stock over 300 years. This approach helps identify which parameters most influence long-term carbon accumulation and how they may respond to environmental change.
 
 ## Model Implementation
 
@@ -47,11 +48,11 @@ colnames(res) <- c("time", "carbon")
 
 ```{r}
 #| fig-width: 10
-#| fig-cap: "__Figure 1: Growth in Forest Size Over 300 Years with No Uncertainty __: Holding the parameters fixed with given values, forest growth in terms of kilograms of Carbon is shown over 300 years. Forest size grows exponetially until it reaches the canopy closure threshold at 50 kg C. Then growth follows a linear model based on a carrying capacity of 250 kg C."
+#| fig-cap: "__Figure 1: Growth in Forest Size Over 300 Years with No Uncertainty __. Holding the parameters fixed with given values, forest growth in terms of kilograms of Carbon is shown over 300 years. Forest size grows exponetially until it reaches the canopy closure threshold at 50 kg C. Then growth follows a linear model based on a carrying capacity of 250 kg C."
 
 # Graph the results with a line signally carrying capacity
 no_uncert <- ggplot(as.data.frame(res), aes(time, carbon)) +
-  geom_point() +
+  geom_point(fill = "steelblue") +
   labs(x = "Time (years)",
        y = "Forest Size (kg C)") +
   theme_minimal()
@@ -118,7 +119,7 @@ allresults <- as.data.frame(sens_forest$X) |>
 
 ```{r}
 #| fig-width: 10
-#| fig-cap: "__Figure 2: Maximum Forest Size Boxplot __: A boxplot shows the maximum carbon for 300 years, a proxy for maximum forest size, with uncertainty. Parameters vary for pre canopy closure growth rate, post-canopy closure growth rate, and canopy closure threshold and carrying capacity. Given the uncertainty in our parameters, maximum forest size averages at 182 kg C. The interquartile range is 171 - 192 kg C. The maximum and minimum for maximum forest size are 237 and 121 kg C, respectively."
+#| fig-cap: "__Figure 2: Maximum Forest Size Distribution.__ Distribution of maximum carbon for 300 years, a proxy for maximum forest size, with uncertainty. Parameters vary for pre canopy closure growth rate, post-canopy closure growth rate, and canopy closure threshold and carrying capacity. Given the uncertainty in our parameters, maximum forest size averages at 182 kg C. The interquartile range is 171 - 192 kg C. The maximum and minimum for maximum forest size are 237 and 121 kg C, respectively."
 
 # Convert vector of results to a data frame for plotting
 allres <- data.frame(max_C = unlist(allresults))
@@ -136,14 +137,14 @@ ggplot(allres, aes(y = max_C)) +
 
 ```{r}
 #| fig-width: 10
-#| fig-cap: "__Table 1: Sobel Indices __: Sobel Indices for maximum carbon for 300 years, a proxy for maximum forest size. The First-order index shows the main effect of parameters without co-varience."
+#| fig-cap: "__Table 1: Sobel Indices__ for maximum carbon over 300 years, a proxy for maximum forest size. The First-order index shows the main effect of parameters without co-varience."
 
 sens_forest$y <- unlist(allresults)
 sens_forest <- sensitivity::tell(sens_forest, sens_forest$Y)
 
 # first-order index (main effect without co-variance)
 rownames(sens_forest$S) <- c("r", "g", "k", "thresh")
-sens_forest$S
+#sens_forest$S
 
 kable(sens_forest$S, 
       caption = "first-order index") |> 
@@ -152,11 +153,11 @@ kable(sens_forest$S,
 
 ```{r}
 #| fig-width: 10
-#| fig-cap: "__Table 2: Sobel Indices __: Sobel Indices for maximum carbon for 300 years, a proxy for maximum forest size. The total sensitivity index shows how the parameters affect the model, accounting for when all parameters interact together."
+#| fig-cap: "__Table 2: Sobel Indices __ for maximum carbon over 300 years, a proxy for maximum forest size. The total sensitivity index shows how the parameters affect the model, accounting for when all parameters interact together."
 
 # total sensitivity index -note that this partitions the output variance
 rownames(sens_forest$T) <- c("r", "g", "k", "thresh")
-sens_forest$T
+#sens_forest$T
 
 kable(sens_forest$T, 
       caption = "total sensitivity index") |> 
@@ -165,4 +166,54 @@ kable(sens_forest$T,
 
 ## Discussion
 
-Our sobol indices quantify how our different parameters contribute to the variance we observe in our maximum forest size model. Pre canopy closure growth rate (r) and carrying capacity (k) have equally the strongest individual and interaction parameter effects (35%) on the maximum forest size. Canopy closure threshold (thresh) is the lowest individual (10%) and interacting parameter (7%), suggesting minimal affect on maximum forest size. As climate change alters the variance of our parameters, specifically pre canopy closure growth rate and carrying capacity, it will in turn affect maximum forest size.
+Our Sobol indices quantify how each parameter contributes to the variance observed in modeled maximum forest size over 300 years. The pre-canopy closure growth rate (r) and carrying capacity (K) exhibit the strongest influence, each contributing approximately 35% to both first-order (individual) and total-effect (interaction-inclusive) sensitivity indices. In contrast, the canopy closure threshold (thres) shows the weakest influence, with only 10% first-order and 7% total-effect contribution. This suggests that uncertainty in thres has minimal impact on long-term forest carbon accumulation. These results imply that as climate change alters variability in early growth rates and carrying capacities—through shifts in temperature, water availability, or soil productivity—it may substantially affect maximum forest size. Accurately estimating these parameters will therefore be critical for reliable forest carbon modeling under future climate scenarios.
+
+## Extra Credit
+```{r}
+# New metric: forest size at year 100
+metric_100yr <- function(res) {
+  value_100 <- res$carbon[which.min(abs(res$time - 100))]
+  return(list(y100 = value_100))
+}
+
+# Modify wrapper function
+p_wrapper_100yr <- function(r, g, K, thres, Pinitial, simtimes, func) {
+  parms <- list(r = r, K = K, g = g, thres = thres)
+  result <- ode(y = Pinitial, times = simtimes, func = func, parms = parms)
+  result_df <- as.data.frame(result)
+  colnames(result_df) <- c("time", "carbon")
+  carbon_100 <- result_df$carbon[which.min(abs(result_df$time - 100))]
+  return(carbon_100)
+}
+
+# Run a new Sobol analysis
+sens_100yr <- sobolSalt(model = NULL, X1 = X1, X2 = X2, n = np, nboot = 0)
+colnames(sens_100yr$X) <- c("r", "g", "K", "thres")
+
+results_100yr <- as.data.frame(sens_100yr$X) %>%
+  pmap_dbl(p_wrapper_100yr, Pinitial = Pinitial, simtimes = tm, func = forest)
+
+sens_100yr$y <- results_100yr
+sens_100yr <- sensitivity::tell(sens_100yr, sens_100yr$y)
+
+# Add rownames and extract 'original' values (the index estimates)
+s_100 <- sens_100yr$S$original
+s_300 <- sens_forest$S$original
+t_100 <- sens_100yr$T$original
+t_300 <- sens_forest$T$original
+
+# Combine into one comparison data frame
+sobol_compare <- data.frame(
+  Parameter = c("r", "g", "K", "thresh"),
+  `S_100yr` = round(s_100, 3),
+  `S_300yr` = round(s_300, 3),
+  `T_100yr` = round(t_100, 3),
+  `T_300yr` = round(t_300, 3)
+)
+
+kable(sobol_compare, caption = "Comparison of Sobol Indices for Forest Size at 100 Years vs Maximum Forest Size (300 Years)") %>%
+  kable_styling(full_width = F, position = "center") %>%
+  column_spec(1, bold = TRUE)
+
+```
+The Sobol analysis reveals a notable shift in parameter influence between short- and long-term forest growth outcomes. At 100 years, pre-canopy closure growth rate (r) overwhelmingly dominates the variance in forest size, with a first-order Sobol index of 1.000, indicating it is the sole driver of variation at that timescale. In contrast, for maximum forest size over 300 years, the influence of r diminishes (S = 0.338), while carrying capacity (K) and post-canopy growth rate (g) become much more influential (S = 0.360 and 0.221, respectively). This suggests that while early growth dynamics are critical in the short term, long-term carbon accumulation depends more on the system’s biophysical limits and slower, density-dependent processes. The canopy closure threshold (thresh) remains a minor contributor in both scenarios.
