@@ -23,6 +23,8 @@ execute:
 library(tidyverse)
 library(deSolve)
 library(sensitivity)
+library(knitr)
+library(kableExtra)
 library(here)
 ```
 
@@ -115,29 +117,52 @@ allresults <- as.data.frame(sens_forest$X) |>
 #### Visualize Results
 
 ```{r}
+#| fig-width: 10
+#| fig-cap: "__Figure 2: Maximum Forest Size Boxplot __: A boxplot shows the maximum carbon for 300 years, a proxy for maximum forest size, with uncertainty. Parameters vary for pre canopy closure growth rate, post-canopy closure growth rate, and canopy closure threshold and carrying capacity. Given the uncertainty in our parameters, maximum forest size averages at 182 kg C. The interquartile range is 171 - 192 kg C. The maximum and minimum for maximum forest size are 237 and 121 kg C, respectively."
+
 # Convert vector of results to a data frame for plotting
 allres <- data.frame(max_C = unlist(allresults))
-
-
 
 #create a boxplot
 ggplot(allres, aes(y = max_C)) +
   geom_boxplot(fill = "steelblue") +
   labs(title = "Distribution of Maximum Carbon Stock (C)",
-       y = "Max Carbon (kgC)", x = "") +
+       y = "Max Carbon (kgC)") +
   theme_minimal()
 
-
-#compute the sobol indices for each metric
 ```
+
 #### Sobol Indices
+
 ```{r}
-# Assign Results to the sobol object
+#| fig-width: 10
+#| fig-cap: "__Table 1: Sobel Indices __: Sobel Indices for maximum carbon for 300 years, a proxy for maximum forest size. The First-order index shows the main effect of parameters without co-varience."
+
 sens_forest$y <- unlist(allresults)
+sens_forest <- sensitivity::tell(sens_forest, sens_forest$Y)
 
-# Compute Sobol indices
-tell(sens_forest, sens_forest$y)
+# first-order index (main effect without co-variance)
+rownames(sens_forest$S) <- c("r", "g", "k", "thresh")
+sens_forest$S
 
+kable(sens_forest$S, 
+      caption = "first-order index") |> 
+  kable_styling(position = "left")
+```
+
+```{r}
+#| fig-width: 10
+#| fig-cap: "__Table 2: Sobel Indices __: Sobel Indices for maximum carbon for 300 years, a proxy for maximum forest size. The total sensitivity index shows how the parameters affect the model, accounting for when all parameters interact together."
+
+# total sensitivity index -note that this partitions the output variance
+rownames(sens_forest$T) <- c("r", "g", "k", "thresh")
+sens_forest$T
+
+kable(sens_forest$T, 
+      caption = "total sensitivity index") |> 
+  kable_styling(position = "right")
 ```
 
 ## Discussion
+
+Our sobol indices quantify how our different parameters contribute to the variance we observe in our maximum forest size model. Pre canopy closure growth rate (r) and carrying capacity (k) have equally the strongest individual and interaction parameter effects (35%) on the maximum forest size. Canopy closure threshold (thresh) is the lowest individual (10%) and interacting parameter (7%), suggesting minimal affect on maximum forest size. As climate change alters the variance of our parameters, specifically pre canopy closure growth rate and carrying capacity, it will in turn affect maximum forest size.
